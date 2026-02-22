@@ -22,7 +22,8 @@ dependencies = [
     "opentelemetry-instrumentation-starlette>=0.60b0",
     "opentelemetry-exporter-otlp-proto-grpc>=1.39.0",
     "logfire>=4.15.1",
-    "azure-core-tracing-opentelemetry>=1.0.0b12"
+    "azure-core-tracing-opentelemetry>=1.0.0b12",
+    "fastapi>=0.129.0",
 ]
 
 [dependency-groups]
