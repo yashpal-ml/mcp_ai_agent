@@ -4,8 +4,10 @@ from datetime import date
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
+import httpx
 
 from fastmcp import FastMCP
+import my_apis
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 logger = logging.getLogger("ExpensesMCP")
@@ -64,6 +66,35 @@ async def add_expense(
     except Exception as e:
         logger.error(f"Error adding expense: {str(e)}")
         return "Error: Unable to add expense"
+
+
+@mcp.tool
+async def call_create_customer_api(payload: my_apis.CreateCustomerRequest
+) -> my_apis.CreateCustomerResponse:
+    """Create a new customer by calling the Customer API endpoint."""
+    # logger.info(f"Creating customer: {first_name} {last_name}")
+    
+    # payload = {
+    #     "first_name": first_name,
+    #     "last_name": last_name,
+    #     "email": email,
+    #     "phone": phone,
+    #     "gender": gender
+    # }
+    
+    try:
+        url = "http://localhost:8100/customers"
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload.model_dump())
+        
+        response.raise_for_status()
+        data = response.json()
+        
+        return f"Customer created successfully! ID: {data['customer_id']}"
+    
+    except Exception as e:
+        logger.error(f"Error creating customer: {str(e)}")
+        return f"Error: Unable to create customer - {str(e)}"
 
 
 @mcp.resource("resource://expenses")

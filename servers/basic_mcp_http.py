@@ -31,7 +31,8 @@ SCRIPT_DIR = Path(__file__).parent
 CUSTOMERS_DATA_FILE = SCRIPT_DIR / "customers_data.csv"
 
 
-mcp = FastMCP("Retail Banking", middleware=middleware)
+# mcp = FastMCP("Retail Banking", middleware=middleware)
+mcp = FastMCP("Retail Banking")
 
 # @mcp.tool
 # async def create_customer(
@@ -66,7 +67,7 @@ async def call_create_customer_api(payload: CreateCustomerRequest) -> CreateCust
     """
     Call the Create Customer API endpoint from Consumer Banking (my_apis.py) to create a new customer.
     """
-    url = "http://localhost:8100/customers"
+    url = "http://localhost:9000/customers"
 
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=payload.model_dump())
