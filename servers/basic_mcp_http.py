@@ -5,7 +5,7 @@ from datetime import date
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
-from my_apis import CreateCustomerRequest, CreateCustomerResponse
+from my_apis import CreateCustomerRequest, CreateCustomerResponse, CustomerRecord
 import httpx
 
 from dotenv import load_dotenv
@@ -30,53 +30,73 @@ logger.setLevel(logging.INFO)
 SCRIPT_DIR = Path(__file__).parent
 CUSTOMERS_DATA_FILE = SCRIPT_DIR / "customers_data.csv"
 
+BASE_URL = os.getenv("CUSTOMERS_API_URL", "http://localhost:9000")
 
 # mcp = FastMCP("Retail Banking", middleware=middleware)
 mcp = FastMCP("Retail Banking")
-
-# @mcp.tool
-# async def create_customer(
-#     first_name: Annotated[str, "Customer's first name"],
-#     last_name: Annotated[str, "Customer's last name"],
-#     email: Annotated[str, "Customer's email address"],
-#     phone: Annotated[str, "Customer's phone number"],
-#     gender: Annotated[Gender, "Customer's gender"]
-# ):
-#     """Create a new customer and save to customers_data.csv file."""
-#     logger.info(f"Creating customer: {first_name} {last_name}")
-
-#     try:
-#         file_exists = CUSTOMERS_DATA_FILE.exists()
-
-#         with open(CUSTOMERS_DATA_FILE, "a", newline="", encoding="utf-8") as file:
-#             writer = csv.writer(file)
-
-#             if not file_exists:
-#                 writer.writerow(["first_name", "last_name", "email", "phone", "gender"])
-
-#             writer.writerow([first_name, last_name, email, phone, gender.value])
-
-#         return f"Successfully created customer: {first_name} {last_name}"
-
-#     except Exception as e:
-#         logger.error(f"Error creating customer: {str(e)}")
-#         return "Error: Unable to create customer"
 
 @mcp.tool
 async def call_create_customer_api(payload: CreateCustomerRequest) -> CreateCustomerResponse:
     """
     Call the Create Customer API endpoint from Consumer Banking (my_apis.py) to create a new customer.
     """
-    url = "http://localhost:9000/customers"
+    url = f"{BASE_URL}/customers"
 
     async with httpx.AsyncClient() as client:
-        response = await client.post(url, json=payload.model_dump())
+        response = await client.post(url, json=payload.model_dump(mode="json"))
 
     response.raise_for_status()
-    
+
     data = response.json()
 
-    return CreateCustomerResponse(customer_id = data["customer_id"], message = data["message"])
+    return CreateCustomerResponse(customer_id=data["customer_id"], message=data["message"])
+
+
+@mcp.tool
+async def call_list_customers_api() -> list[CustomerRecord]:
+    """
+    Call the List Customers API endpoint to retrieve all customers.
+    """
+    url = f"{BASE_URL}/customers"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+
+    response.raise_for_status()
+
+    return [CustomerRecord(**item) for item in response.json()]
+
+
+@mcp.tool
+async def call_get_customer_api(customer_id: Annotated[str, "The unique customer ID"]) -> CustomerRecord:
+    """
+    Call the Get Customer API endpoint to retrieve a single customer by ID.
+    """
+    url = f"{BASE_URL}/customers/{customer_id}"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+
+    response.raise_for_status()
+
+    return CustomerRecord(**response.json())
+
+
+@mcp.tool
+async def call_delete_customer_api(customer_id: Annotated[str, "The unique customer ID to delete"]) -> str:
+    """
+    Call the Delete Customer API endpoint to remove a customer by ID.
+    """
+    url = f"{BASE_URL}/customers/{customer_id}"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.delete(url)
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    return f"Customer deleted successfully! ID: {data['customer_id']}"
 
 
 @mcp.resource("resource://customers")

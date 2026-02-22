@@ -1,5 +1,6 @@
 import csv
 import logging
+import os
 from datetime import date
 from enum import Enum
 from pathlib import Path
@@ -8,6 +9,8 @@ import httpx
 
 from fastmcp import FastMCP
 import my_apis
+
+BASE_URL = os.getenv("CUSTOMERS_API_URL", "http://localhost:9000")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 logger = logging.getLogger("ExpensesMCP")
@@ -72,20 +75,10 @@ async def add_expense(
 async def call_create_customer_api(payload: my_apis.CreateCustomerRequest
 ) -> my_apis.CreateCustomerResponse:
     """Create a new customer by calling the Customer API endpoint."""
-    # logger.info(f"Creating customer: {first_name} {last_name}")
-    
-    # payload = {
-    #     "first_name": first_name,
-    #     "last_name": last_name,
-    #     "email": email,
-    #     "phone": phone,
-    #     "gender": gender
-    # }
-    
     try:
-        url = "http://localhost:8100/customers"
+        url = f"{BASE_URL}/customers"
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=payload.model_dump())
+            response = await client.post(url, json=payload.model_dump(mode="json"))
         
         response.raise_for_status()
         data = response.json()
@@ -95,6 +88,40 @@ async def call_create_customer_api(payload: my_apis.CreateCustomerRequest
     except Exception as e:
         logger.error(f"Error creating customer: {str(e)}")
         return f"Error: Unable to create customer - {str(e)}"
+
+
+@mcp.tool
+async def call_list_customers_api() -> list[my_apis.CustomerRecord]:
+    """List all customers by calling the Customer API endpoint."""
+    url = f"{BASE_URL}/customers"
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+    
+    response.raise_for_status()
+    return [my_apis.CustomerRecord(**item) for item in response.json()]
+
+
+@mcp.tool
+async def call_get_customer_api(customer_id: Annotated[str, "The unique customer ID"]) -> my_apis.CustomerRecord:
+    """Get a single customer by ID by calling the Customer API endpoint."""
+    url = f"{BASE_URL}/customers/{customer_id}"
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+    
+    response.raise_for_status()
+    return my_apis.CustomerRecord(**response.json())
+
+
+@mcp.tool
+async def call_delete_customer_api(customer_id: Annotated[str, "The unique customer ID to delete"]) -> str:
+    """Delete a customer by ID by calling the Customer API endpoint."""
+    url = f"{BASE_URL}/customers/{customer_id}"
+    async with httpx.AsyncClient() as client:
+        response = await client.delete(url)
+    
+    response.raise_for_status()
+    data = response.json()
+    return f"Customer deleted successfully! ID: {data['customer_id']}"
 
 
 @mcp.resource("resource://expenses")
